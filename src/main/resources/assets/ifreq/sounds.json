@@ -1,0 +1,20 @@
+{
+  "radio_beep": {
+    "category": "player",
+    "sounds": [
+      {
+        "name": "ezfreq:walkie_join",
+        "stream": false
+      }
+    ]
+  },
+  "radio_noise": {
+    "category": "player",
+    "sounds": [
+      {
+        "name": "ezfreq:radio_noise",
+        "stream": false
+      }
+    ]
+  }
+}

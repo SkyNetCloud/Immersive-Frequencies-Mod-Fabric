@@ -1,0 +1,16 @@
+{
+  "itemGroup.ifreq": "Frecuencias Inmersivas",
+  "key.categories.ifreq": "Frecuencias Inmersivas",
+  "item.ifreq.walkie_talkie": "Walkie-Talkie",
+  "item.ifreq.walkie_talkie.tooltip.frequency": "Frecuencia: %s MHz",
+  "item.ifreq.walkie_talkie.tooltip.range": "Rango: %s bloques",
+  "message.ifreq.walkie_talkie.frequency": "[Walkie-Talkie] Frecuencia: %s MHz",
+  "gui.ifreq.walkie_talkie.title": "Walkie-Talkie",
+  "gui.ifreq.walkie_talkie.frequency_label": "Frecuencia (MHz):",
+  "gui.ifreq.walkie_talkie.range_label": "Rango: %s - %s MHz",
+  "gui.ifreq.walkie_talkie.set": "Establecer",
+  "gui.ifreq.walkie_talkie.power_label": "Energía",
+  "gui.ifreq.walkie_talkie.on": "ON",
+  "gui.ifreq.walkie_talkie.off": "OFF",
+  "key.ifreq.open_walkie_gui": "Abrir GUI del Walkie"
+}

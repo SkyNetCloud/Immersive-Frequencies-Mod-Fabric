@@ -1,0 +1,26 @@
+.gradle
+**/build/
+!**/src/**/build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
+.project
+.classpath
+
+# Forge/FG
+forge-gradle/
+.gradle/
+run/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Compiled
+*.class
+
+# OS
+.DS_Store
+Thumbs.db
