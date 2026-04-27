@@ -1,32 +1,29 @@
 package com.armilp.ifreq.common.registry;
 
 import com.armilp.ifreq.MainEZ;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 
-@Mod.EventBusSubscriber(modid = MainEZ.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+import net.minecraft.item.ItemGroup;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+
+
 public class ModCreativeTab {
 
-    public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MainEZ.MODID);
+    public static final ItemGroup EZFREQ_TAB = FabricItemGroup.builder()
+            .icon(() -> new ItemStack(ModItems.WALKIE_TALKIE))
+            .displayName(Text.translatable("itemGroup.ifreq"))
+            .entries((context, entries) -> entries.add(ModItems.WALKIE_TALKIE))
+            .build();
 
-
-    public static final RegistryObject<CreativeModeTab> EZFREQ_TAB = TABS.register("ezfreq_tab", () ->
-            CreativeModeTab.builder()
-                    .icon(() -> new ItemStack(ModItems.WALKIE_TALKIE.get()))
-                    .title(Component.translatable("itemGroup.ifreq"))
-                    .displayItems((parameters, output) -> {
-                        output.accept(ModItems.WALKIE_TALKIE.get());
-                    })
-                    .build()
-    );
-
-    public static void register(IEventBus bus) {
-        TABS.register(bus);
+    public static void register() {
+        Registry.register(
+                Registries.ITEM_GROUP,
+                Identifier.of(MainEZ.MODID, "ezfreq_tab"),
+                EZFREQ_TAB
+        );
     }
 }

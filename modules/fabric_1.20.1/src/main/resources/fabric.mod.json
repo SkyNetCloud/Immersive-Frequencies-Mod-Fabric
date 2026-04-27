@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "ifreq",
+  "version": "${version}",
+  "name": "Immersive Frequencies",
+  "description": "A mod that adds frequency-based communication systems",
+  "authors": [
+    "armilp",
+    "JPZamps"
+  ],
+  "contact": {},
+  "license": "All Rights Reserved",
+  "icon": "assets/ifreq/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.armilp.ifreq.MainEZ"
+    ],
+    "client": [
+      "com.armilp.ifreq.client.ClientMainEZ"
+    ],
+    "voicechat": [
+      "com.armilp.ifreq.Plugin"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.21",
+    "fabric": "*",
+    "voicechat": ">=1.20.1-2.5.0",
+    "minecraft": "1.20.1"
+  }
+}

@@ -1,27 +1,21 @@
 package com.armilp.ifreq.client.keys;
 
-import com.armilp.ifreq.MainEZ;
 import com.armilp.ifreq.common.registry.ModItems;
-import com.armilp.ifreq.network.ModPackets;
 import com.armilp.ifreq.network.OpenWalkieGuiPacket;
-import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
-@Mod.EventBusSubscriber(modid = MainEZ.MODID, value = Dist.CLIENT)
 public class ClientKeyHandler {
 
-    @SubscribeEvent
-    public static void onKeyInput(InputEvent.Key event) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
+    public static void register() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (client.player == null) return;
 
-        if (KeyBindings.OPEN_WALKIE_GUI.consumeClick()) {
-            if (mc.player.getMainHandItem().getItem() == ModItems.WALKIE_TALKIE.get()) {
-                ModPackets.CHANNEL.sendToServer(new OpenWalkieGuiPacket());
+            while (KeyBindings.OPEN_WALKIE_GUI.wasPressed()) {
+                if (client.player.getMainHandStack().getItem() == ModItems.WALKIE_TALKIE) {
+                    ClientPlayNetworking.send(new OpenWalkieGuiPacket());
+                }
             }
-        }
+        });
     }
 }

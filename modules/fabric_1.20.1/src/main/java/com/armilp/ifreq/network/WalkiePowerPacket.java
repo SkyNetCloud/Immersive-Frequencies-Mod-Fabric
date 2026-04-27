@@ -1,41 +1,49 @@
 package com.armilp.ifreq.network;
 
+import com.armilp.ifreq.MainEZ;
 import com.armilp.ifreq.common.WalkieHandler;
 import com.armilp.ifreq.common.items.ItemWalkieTalkie;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.fabricmc.fabric.api.networking.v1.FabricPacket;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.fabricmc.fabric.api.networking.v1.PacketType;
+import net.minecraft.item.ItemStack;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 
-import java.util.function.Supplier;
+import java.util.Objects;
 
-public class WalkiePowerPacket {
+public record WalkiePowerPacket(boolean on) implements FabricPacket {
 
-    private final boolean on;
+    public static final PacketType<WalkiePowerPacket> TYPE = PacketType.create(
+            Identifier.of(MainEZ.MODID, "walkie_power"),
+            WalkiePowerPacket::new
+    );
 
-    public WalkiePowerPacket(boolean on) {
-        this.on = on;
+    // Constructor for reading from buffer
+    public WalkiePowerPacket(PacketByteBuf buf) {
+        this(buf.readBoolean());
     }
 
-    public static WalkiePowerPacket decode(FriendlyByteBuf buf) {
-        return new WalkiePowerPacket(buf.readBoolean());
-    }
-
-    public void encode(FriendlyByteBuf buf) {
+    @Override
+    public void write(PacketByteBuf buf) {
         buf.writeBoolean(on);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
+    @Override
+    public PacketType<?> getType() {
+        return TYPE;
+    }
 
+    // Handler for 1.20.1 Fabric API
+    public static void receive(WalkiePowerPacket packet, ServerPlayerEntity player, PacketSender responseSender) {
+        Objects.requireNonNull(player.getServer()).execute(() -> {
             ItemStack walkie = WalkieHandler.getHeldWalkie(player);
-            if (walkie == null) return;
+            assert walkie != null;
+            if (walkie.isEmpty()) return;
 
-            ItemWalkieTalkie.setOn(walkie, on);
-            WalkieHandler.onPowerChanged(player, on);
+            ItemWalkieTalkie.setOn(walkie, packet.on());
+            WalkieHandler.onPowerChanged(player, packet.on());
         });
-        ctx.get().setPacketHandled(true);
     }
 }

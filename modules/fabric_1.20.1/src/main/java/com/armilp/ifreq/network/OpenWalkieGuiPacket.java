@@ -1,48 +1,58 @@
 package com.armilp.ifreq.network;
 
+import com.armilp.ifreq.MainEZ;
 import com.armilp.ifreq.common.menu.WalkieTalkieMenu;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleMenuProvider;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.NetworkHooks;
+import net.fabricmc.fabric.api.networking.v1.FabricPacket;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.fabricmc.fabric.api.networking.v1.PacketType;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.function.Supplier;
+public record OpenWalkieGuiPacket() implements FabricPacket {
 
-public class OpenWalkieGuiPacket {
+    public static final PacketType<OpenWalkieGuiPacket> TYPE = PacketType.create(
+            Identifier.of(MainEZ.MODID, "open_walkie_gui"),
+            OpenWalkieGuiPacket::new
+    );
 
-    public OpenWalkieGuiPacket() {
+    public OpenWalkieGuiPacket(PacketByteBuf buf) {
+        this();
     }
 
-    // Deserialización: no enviamos datos extra, así que no leemos nada
-    public OpenWalkieGuiPacket(FriendlyByteBuf buf) {
-        // No hay datos que leer
+    @Override
+    public void write(PacketByteBuf buf) {
+        // No data to write
     }
 
-    // Serialización: no enviamos datos, así que no escribimos nada
-    public void toBytes(FriendlyByteBuf buf) {
+    @Override
+    public PacketType<?> getType() {
+        return TYPE;
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        ServerPlayer serverPlayer = context.getSender();
-        if (serverPlayer == null) {
-            context.setPacketHandled(true);
-            return;
-        }
+    public static void receive(OpenWalkieGuiPacket packet, ServerPlayerEntity player, PacketSender responseSender) {
+        player.getServer().execute(() -> {
+            player.openHandledScreen(new ExtendedScreenHandlerFactory() {
+                @Override
+                public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
+                }
 
-        context.enqueueWork(() -> {
-            // Creamos un MenuProvider sencillo que Forge entiende
-            SimpleMenuProvider provider = new SimpleMenuProvider(
-                    (id, inv, player) -> new WalkieTalkieMenu(id, inv, player.getMainHandItem()),
-                    Component.literal("Walkie Talkie")
-            );
+                @Override
+                public Text getDisplayName() {
+                    return Text.literal("Walkie Talkie");
+                }
 
-            // Usamos NetworkHooks.openGui para que Forge abra el contenedor
-            NetworkHooks.openScreen(serverPlayer, provider);
+                @Override
+                public @Nullable ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
+                    return new WalkieTalkieMenu(syncId, inv, player.getMainHandStack());
+                }
+            });
         });
-
-        context.setPacketHandled(true);
     }
 }

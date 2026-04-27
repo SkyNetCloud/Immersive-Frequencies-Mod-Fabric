@@ -1,13 +1,11 @@
 package com.armilp.ifreq.common;
 
-import com.armilp.ifreq.MainEZ;
 import com.armilp.ifreq.Plugin;
 import com.armilp.ifreq.common.items.ItemWalkieTalkie;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.item.ItemStack;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.Map;
 import java.util.Optional;
@@ -15,7 +13,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Mod.EventBusSubscriber(modid = MainEZ.MODID)
 public class WalkieHandler {
 
     private static final Set<UUID> activePlayers = ConcurrentHashMap.newKeySet();
@@ -24,23 +21,24 @@ public class WalkieHandler {
 
     private static final int INIT_DELAY_TICKS = 2;
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
-        if (!(event.player instanceof ServerPlayer player)) return;
+    public static void register() {
+        ServerTickEvents.END_SERVER_TICK.register(WalkieHandler::onServerTick);
+    }
 
-        UUID playerId = player.getUUID();
-        ItemStack walkie = getHeldWalkie(player);
+    private static void onServerTick(MinecraftServer server) {
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            UUID playerId = player.getUuid();
+            ItemStack walkie = getHeldWalkie(player);
 
-        if (walkie != null) {
-            handleWalkieHeld(player, playerId, walkie);
-        } else {
-            handleWalkieDropped(player, playerId);
+            if (walkie != null) {
+                handleWalkieHeld(player, playerId, walkie);
+            } else {
+                handleWalkieDropped(player, playerId);
+            }
         }
     }
 
-    private static void handleWalkieHeld(ServerPlayer player, UUID playerId, ItemStack walkie) {
-        // Si el walkie está apagado, desconectar y no hacer nada
+    private static void handleWalkieHeld(ServerPlayerEntity player, UUID playerId, ItemStack walkie) {
         if (!ItemWalkieTalkie.isOn(walkie)) {
             if (activePlayers.contains(playerId)) {
                 Plugin.unsubscribeFromAll(player);
@@ -73,7 +71,7 @@ public class WalkieHandler {
         }
     }
 
-    private static void handleWalkieDropped(ServerPlayer player, UUID playerId) {
+    private static void handleWalkieDropped(ServerPlayerEntity player, UUID playerId) {
         if (activePlayers.contains(playerId)) {
             Plugin.unsubscribeFromAll(player);
             cleanupPlayer(playerId);
@@ -86,23 +84,22 @@ public class WalkieHandler {
                 !activePlayers.contains(playerId);
     }
 
-    public static ItemStack getHeldWalkie(ServerPlayer player) {
-        ItemStack main = player.getMainHandItem();
+    public static ItemStack getHeldWalkie(ServerPlayerEntity player) {
+        ItemStack main = player.getMainHandStack();
         if (main.getItem() instanceof ItemWalkieTalkie) return main;
-        ItemStack off = player.getOffhandItem();
+        ItemStack off = player.getOffHandStack();
         if (off.getItem() instanceof ItemWalkieTalkie) return off;
         return null;
     }
 
-    public static void onPowerChanged(ServerPlayer player, boolean on) {
-        UUID playerId = player.getUUID();
+    public static void onPowerChanged(ServerPlayerEntity player, boolean on) {
+        UUID playerId = player.getUuid();
         if (!on) {
             if (activePlayers.contains(playerId)) {
                 Plugin.unsubscribeFromAll(player);
                 cleanupPlayer(playerId);
             }
         } else {
-            // Forzar reconexión en el siguiente tick
             lastFrequencies.remove(playerId);
             activePlayers.remove(playerId);
             initTicks.remove(playerId);

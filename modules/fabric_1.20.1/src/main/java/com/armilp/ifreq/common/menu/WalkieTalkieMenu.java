@@ -1,32 +1,35 @@
 package com.armilp.ifreq.common.menu;
 
 import com.armilp.ifreq.common.registry.ModMenus;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 
-public class WalkieTalkieMenu extends AbstractContainerMenu {
+import net.minecraft.item.ItemStack;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.screen.ScreenHandler;
+
+public class WalkieTalkieMenu extends ScreenHandler {
 
     public final ItemStack itemStack;
 
-    public WalkieTalkieMenu(int id, Inventory inv, FriendlyByteBuf extraData) {
-        this(id, inv, inv.player.getMainHandItem());
+    // Client-side: receives ItemStack sent by ExtendedScreenHandlerFactory
+    public WalkieTalkieMenu(int syncId, PlayerInventory inv, PacketByteBuf ignoredBuf) {
+        this(syncId, inv, inv.player.getMainHandStack());
     }
 
-    public WalkieTalkieMenu(int id, Inventory inv, ItemStack itemStack) {
-        super(ModMenus.WALKIE_TALKIE_MENU.get(), id);
+    // Server-side: direct creation
+    public WalkieTalkieMenu(int syncId, PlayerInventory ignoredInv, ItemStack itemStack) {
+        super(ModMenus.WALKIE_TALKIE_MENU, syncId);
         this.itemStack = itemStack;
     }
 
     @Override
-    public boolean stillValid(Player player) {
+    public boolean canUse(PlayerEntity player) {
         return true;
     }
 
     @Override
-    public ItemStack quickMoveStack(Player player, int index) {
+    public ItemStack quickMove(PlayerEntity player, int index) {
         return ItemStack.EMPTY;
     }
 }

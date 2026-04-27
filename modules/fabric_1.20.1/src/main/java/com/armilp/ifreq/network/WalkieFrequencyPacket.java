@@ -1,47 +1,57 @@
 package com.armilp.ifreq.network;
 
+import com.armilp.ifreq.MainEZ;
 import com.armilp.ifreq.Plugin;
 import com.armilp.ifreq.common.frequency.FrequencyManager;
 import com.armilp.ifreq.common.items.ItemWalkieTalkie;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.fabricmc.fabric.api.networking.v1.FabricPacket;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.fabricmc.fabric.api.networking.v1.PacketType;
+import net.minecraft.item.ItemStack;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 
-import java.util.function.Supplier;
+public record WalkieFrequencyPacket(double frequency) implements FabricPacket {
 
-public class WalkieFrequencyPacket {
+    public static final PacketType<WalkieFrequencyPacket> TYPE = PacketType.create(
+            Identifier.of(MainEZ.MODID, "walkie_frequency"),
+            WalkieFrequencyPacket::new
+    );
 
-    private final double frequency;
+    // Constructor for reading from buffer
+    public WalkieFrequencyPacket(PacketByteBuf buf) {
+        this(buf.readDouble());
+    }
 
+    // Round on construction
     public WalkieFrequencyPacket(double frequency) {
         this.frequency = FrequencyManager.roundToTenth(frequency);
     }
 
-    public static void encode(WalkieFrequencyPacket pkt, FriendlyByteBuf buf) {
-        buf.writeDouble(pkt.frequency);
+    @Override
+    public void write(PacketByteBuf buf) {
+        buf.writeDouble(frequency);
     }
 
-    public static WalkieFrequencyPacket decode(FriendlyByteBuf buf) {
-        return new WalkieFrequencyPacket(buf.readDouble());
+    @Override
+    public PacketType<?> getType() {
+        return TYPE;
     }
 
-    public static void handle(WalkieFrequencyPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
+    // Handler for 1.20.1 Fabric API
+    public static void receive(WalkieFrequencyPacket packet, ServerPlayerEntity player, PacketSender responseSender) {
+        player.getServer().execute(() -> {
+            ItemStack main = player.getMainHandStack();
+            ItemStack off = player.getOffHandStack();
 
-            ItemStack main = player.getMainHandItem();
-            ItemStack off = player.getOffhandItem();
-
-            boolean updated = updateWalkieFrequency(main, msg.frequency) ||
-                    updateWalkieFrequency(off, msg.frequency);
+            boolean updated = updateWalkieFrequency(main, packet.frequency()) ||
+                    updateWalkieFrequency(off, packet.frequency());
 
             if (updated) {
-                Plugin.subscribeToFrequency(player, msg.frequency);
+                Plugin.subscribeToFrequency(player, packet.frequency());
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static boolean updateWalkieFrequency(ItemStack stack, double frequency) {

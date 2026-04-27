@@ -9,8 +9,9 @@ import de.maxhenkel.voicechat.api.VoicechatServerApi;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
 import de.maxhenkel.voicechat.api.events.MicrophonePacketEvent;
 import de.maxhenkel.voicechat.api.events.VoicechatServerStartedEvent;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.item.ItemStack;
+import net.minecraft.server.network.ServerPlayerEntity;
+
 
 import java.util.List;
 import java.util.Map;
@@ -45,27 +46,27 @@ public class Plugin implements VoicechatPlugin {
         VoicechatConnection senderConnection = event.getSenderConnection();
         if (senderConnection == null || api == null) return;
 
-        if (!(senderConnection.getPlayer().getPlayer() instanceof ServerPlayer senderPlayer)) return;
+        if (!(senderConnection.getPlayer().getPlayer() instanceof ServerPlayerEntity senderPlayer)) return;
 
         ItemStack senderWalkie = getWalkieTalkieInHand(senderPlayer);
 
         if (senderWalkie == null || !ItemWalkieTalkie.isOn(senderWalkie)) return;
 
-        var server = senderPlayer.getServer();
+        var server = senderPlayer.getEntityWorld();
         if (server == null) return;
 
-        UUID senderId = senderPlayer.getUUID();
+        UUID senderId = senderPlayer.getUuid();
         double senderFreq = ItemWalkieTalkie.getFrequency(senderWalkie);
 
         double maxDist = ((ItemWalkieTalkie) senderWalkie.getItem()).getMaxDistance();
         double maxDistSq = maxDist * maxDist;
 
         var builtPacket = event.getPacket().staticSoundPacketBuilder().build();
-        List<ServerPlayer> players = server.getPlayerList().getPlayers();
+        List<ServerPlayerEntity> players = server.getServer().getPlayerManager().getPlayerList();
 
-        for (ServerPlayer receiverPlayer : players) {
-            if (receiverPlayer.getUUID().equals(senderId)) continue;
-            if (!receiverPlayer.level().dimension().equals(senderPlayer.level().dimension())) continue;
+        for (ServerPlayerEntity receiverPlayer : players) {
+            if (receiverPlayer.getUuid().equals(senderId)) continue;
+            if (!receiverPlayer.getEntityWorld().getDimensionEntry().equals(senderPlayer.getEntityWorld().getDimensionEntry())) continue;
 
             ItemStack receiverWalkie = getWalkieTalkieInHand(receiverPlayer);
 
@@ -80,39 +81,39 @@ public class Plugin implements VoicechatPlugin {
             double distSq = dx * dx + dy * dy + dz * dz;
             if (distSq > maxDistSq) continue;
 
-            var receiverConnection = api.getConnectionOf(receiverPlayer.getUUID());
+            var receiverConnection = api.getConnectionOf(receiverPlayer.getUuid());
             if (receiverConnection == null) continue;
 
             api.sendStaticSoundPacketTo(receiverConnection, builtPacket);
         }
     }
 
-    private ItemStack getWalkieTalkieInHand(ServerPlayer player) {
-        ItemStack main = player.getMainHandItem();
+    private ItemStack getWalkieTalkieInHand(ServerPlayerEntity player) {
+        ItemStack main = player.getMainHandStack();
         if (main.getItem() instanceof ItemWalkieTalkie) return main;
-        ItemStack off = player.getOffhandItem();
+        ItemStack off = player.getOffHandStack();
         if (off.getItem() instanceof ItemWalkieTalkie) return off;
         return null;
     }
 
-    public static void subscribeToFrequency(ServerPlayer player, double frequency) {
+    public static void subscribeToFrequency(ServerPlayerEntity player, double frequency) {
         if (player == null) return;
         if (!hasWalkieTalkie(player)) return;
         frequency = FrequencyManager.roundToTenth(frequency);
-        playerFrequencies.put(player.getUUID(), frequency);
+        playerFrequencies.put(player.getUuid(), frequency);
     }
 
-    public static void unsubscribeFromAll(ServerPlayer player) {
+    public static void unsubscribeFromAll(ServerPlayerEntity player) {
         if (player == null) return;
-        UUID playerId = player.getUUID();
+        UUID playerId = player.getUuid();
         Double frequency = playerFrequencies.remove(playerId);
     }
 
-    public static boolean hasWalkieTalkie(ServerPlayer player) {
+    public static boolean hasWalkieTalkie(ServerPlayerEntity player) {
         if (player == null) return false;
-        ItemStack main = player.getMainHandItem();
+        ItemStack main = player.getMainHandStack();
         if (main.getItem() instanceof ItemWalkieTalkie) return true;
-        ItemStack off = player.getOffhandItem();
+        ItemStack off = player.getOffHandStack();
         return off.getItem() instanceof ItemWalkieTalkie;
     }
 }

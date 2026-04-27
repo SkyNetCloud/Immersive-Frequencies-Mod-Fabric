@@ -1,13 +1,12 @@
 package com.armilp.ifreq.common.frequency;
 
 import com.armilp.ifreq.MainEZ;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.PersistentState;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -15,13 +14,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class FrequencySavedData extends SavedData {
+public class FrequencySavedData extends PersistentState {
 
     private static final String DATA_NAME = "ifrequency";
-    private static final String MAPPINGS_KEY = "mappings";
-    private static final String METADATA_KEY = "metadata";
-    private static final String VERSION_KEY = "version";
     private static final int CURRENT_VERSION = 1;
+
+    // NBT Keys
+    private static final String KEY_VERSION = "version";
+    private static final String KEY_GROUP_TO_FREQUENCY = "group_to_frequency";
+    private static final String KEY_FREQUENCY_TO_GROUP = "frequency_to_group";
+    private static final String KEY_ACTIVE_GROUPS = "active_groups";
+    private static final String KEY_GROUP_NAME = "group_name";
+    private static final String KEY_FREQUENCY = "frequency";
 
     private final Map<String, Double> groupToFrequency;
     private final Map<Double, String> frequencyToGroup;
@@ -33,72 +37,78 @@ public class FrequencySavedData extends SavedData {
         this.activeGroups = ConcurrentHashMap.newKeySet();
     }
 
-    public static FrequencySavedData get(Level level) {
-        if (!(level instanceof ServerLevel serverLevel)) {
-            throw new IllegalStateException("Cannot access world data from client side!");
-        }
-        return serverLevel.getDataStorage().computeIfAbsent(
-                FrequencySavedData::load,
+    private FrequencySavedData(Map<String, Double> groupToFrequency,
+                               Map<Double, String> frequencyToGroup,
+                               Set<String> activeGroups) {
+        this.groupToFrequency = new ConcurrentHashMap<>(groupToFrequency);
+        this.frequencyToGroup = new ConcurrentHashMap<>(frequencyToGroup);
+        this.activeGroups = ConcurrentHashMap.newKeySet();
+        this.activeGroups.addAll(activeGroups);
+    }
+
+    public static FrequencySavedData get(ServerWorld world) {
+        return world.getPersistentStateManager().getOrCreate(
+                FrequencySavedData::createFromNbt,
                 FrequencySavedData::new,
                 DATA_NAME
         );
     }
 
-    public Optional<String> getGroupName(double freq) {
-        return Optional.ofNullable(frequencyToGroup.get(FrequencyManager.roundToTenth(freq)));
-    }
-
-    public Optional<Double> getFrequency(String groupName) {
-        return Optional.ofNullable(groupToFrequency.get(groupName));
-    }
-
-    private static FrequencySavedData load(CompoundTag tag) {
+    public static FrequencySavedData createFromNbt(NbtCompound nbt) {
         FrequencySavedData data = new FrequencySavedData();
 
-        int version = tag.getInt(VERSION_KEY);
-        if (version > CURRENT_VERSION) {
-            throw new IllegalStateException("Unsupported data version: " + version);
+        int version = nbt.getInt(KEY_VERSION);
+
+        // Load group_to_frequency
+        NbtCompound groupToFreqNbt = nbt.getCompound(KEY_GROUP_TO_FREQUENCY);
+        for (String groupName : groupToFreqNbt.getKeys()) {
+            double frequency = groupToFreqNbt.getDouble(groupName);
+            data.groupToFrequency.put(groupName, frequency);
         }
 
-        if (tag.contains(MAPPINGS_KEY)) {
-            CompoundTag mappings = tag.getCompound(MAPPINGS_KEY);
-            for (String key : mappings.getAllKeys()) {
-                data.addMapping(key, mappings.getDouble(key), false);
-            }
+        // Load frequency_to_group
+        NbtCompound freqToGroupNbt = nbt.getCompound(KEY_FREQUENCY_TO_GROUP);
+        for (String freqStr : freqToGroupNbt.getKeys()) {
+            double frequency = Double.parseDouble(freqStr);
+            String groupName = freqToGroupNbt.getString(freqStr);
+            data.frequencyToGroup.put(frequency, groupName);
         }
 
-        if (tag.contains("active_groups")) {
-            ListTag activeGroupsList = tag.getList("active_groups", Tag.TAG_STRING);
-            for (int i = 0; i < activeGroupsList.size(); i++) {
-                data.activeGroups.add(activeGroupsList.getString(i));
-            }
+        // Load active_groups
+        NbtList activeGroupsList = nbt.getList(KEY_ACTIVE_GROUPS, NbtElement.STRING_TYPE);
+        for (int i = 0; i < activeGroupsList.size(); i++) {
+            data.activeGroups.add(activeGroupsList.getString(i));
         }
 
         return data;
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
-        tag.putInt(VERSION_KEY, CURRENT_VERSION);
+    public NbtCompound writeNbt(NbtCompound nbt) {
+        nbt.putInt(KEY_VERSION, CURRENT_VERSION);
 
-        CompoundTag mappings = new CompoundTag();
+        // Save group_to_frequency
+        NbtCompound groupToFreqNbt = new NbtCompound();
         for (Map.Entry<String, Double> entry : groupToFrequency.entrySet()) {
-            mappings.putDouble(entry.getKey(), entry.getValue());
+            groupToFreqNbt.putDouble(entry.getKey(), entry.getValue());
         }
-        tag.put(MAPPINGS_KEY, mappings);
+        nbt.put(KEY_GROUP_TO_FREQUENCY, groupToFreqNbt);
 
-        ListTag activeGroupsList = new ListTag();
-        for (String group : activeGroups) {
-            activeGroupsList.add(StringTag.valueOf(group));
+        // Save frequency_to_group (convert double keys to strings for NBT)
+        NbtCompound freqToGroupNbt = new NbtCompound();
+        for (Map.Entry<Double, String> entry : frequencyToGroup.entrySet()) {
+            freqToGroupNbt.putString(String.valueOf(entry.getKey()), entry.getValue());
         }
-        tag.put("active_groups", activeGroupsList);
+        nbt.put(KEY_FREQUENCY_TO_GROUP, freqToGroupNbt);
 
-        CompoundTag metadata = new CompoundTag();
-        metadata.putLong("last_saved", System.currentTimeMillis());
-        metadata.putInt("total_groups", groupToFrequency.size());
-        tag.put(METADATA_KEY, metadata);
+        // Save active_groups
+        NbtList activeGroupsList = new NbtList();
+        for (String groupName : activeGroups) {
+            activeGroupsList.add(NbtString.of(groupName));
+        }
+        nbt.put(KEY_ACTIVE_GROUPS, activeGroupsList);
 
-        return tag;
+        return nbt;
     }
 
     public String getOrCreateGroupName(double freq) {
@@ -138,7 +148,7 @@ public class FrequencySavedData extends SavedData {
         groupToFrequency.put(groupName, frequency);
         frequencyToGroup.put(frequency, groupName);
 
-        if (markDirty) setDirty();
+        if (markDirty) markDirty();
     }
 
     public boolean removeMapping(String groupName) {
@@ -148,7 +158,7 @@ public class FrequencySavedData extends SavedData {
         if (frequency != null) {
             frequencyToGroup.remove(frequency);
             activeGroups.remove(groupName);
-            setDirty();
+            markDirty();
             return true;
         }
         return false;
@@ -164,6 +174,14 @@ public class FrequencySavedData extends SavedData {
 
     public Set<String> getAllGroupNames() {
         return new HashSet<>(groupToFrequency.keySet());
+    }
+
+    public Optional<String> getGroupName(double freq) {
+        return Optional.ofNullable(frequencyToGroup.get(FrequencyManager.roundToTenth(freq)));
+    }
+
+    public Optional<Double> getFrequency(String groupName) {
+        return Optional.ofNullable(groupToFrequency.get(groupName));
     }
 
     public void cleanupInactiveGroups() {
@@ -189,11 +207,16 @@ public class FrequencySavedData extends SavedData {
     }
 
     public void markGroupActive(String groupName) {
-        if (groupToFrequency.containsKey(groupName)) activeGroups.add(groupName);
+        if (groupToFrequency.containsKey(groupName)) {
+            activeGroups.add(groupName);
+            markDirty();
+        }
     }
 
     public void markGroupInactive(String groupName) {
-        activeGroups.remove(groupName);
+        if (activeGroups.remove(groupName)) {
+            markDirty();
+        }
     }
 
     public String getDebugInfo() {
