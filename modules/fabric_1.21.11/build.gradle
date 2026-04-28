@@ -57,20 +57,24 @@ dependencies {
 
 
 processResources {
-    inputs.property "version", project.version
-    inputs.property "minecraft_version", project.minecraft_version
-    inputs.property "loader_version", project.loader_version
-    inputs.property "voicechat_api_version", project.voicechat_api_version
+    var replaceProperties = [
+            version               : mod_version,
+            minecraft_version     : minecraft_version,
+            loader_version        : loader_version,
+            fabric_api_version    : fabric_api_version,
+            voicechat_api_version : voicechat_api_version,
+            voicechat_version     : voicechat_version,
+            mod_id                : mod_id,
+            mod_name              : mod_name,
+            mod_license           : mod_license,
+            mod_authors           : mod_authors,
+            mod_description       : mod_description,
+    ]
 
-    filteringCharset "UTF-8"
+    inputs.properties replaceProperties
 
-    filesMatching("fabric.mod.json") {
-        expand(
-                "version": project.version,
-                "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version,
-                "voicechat_api_version": project.voicechat_api_version,
-        )
+    filesMatching('fabric.mod.json') {
+        expand replaceProperties
     }
 }
 
@@ -91,11 +95,16 @@ tasks.register('publishCurseForge', TaskPublishCurseForge) {
     def mainFile = upload('', file("build/libs/${mod_id}-${mod_version}.jar"))
     mainFile.displayName = "${mod_name}-${mod_version}"
     mainFile.releaseType = 'beta'
+
     mainFile.changelog = changelogText
     debugMode = site_debugMode
+    mainFile.gameVersions.add("Java 21")
+    mainFile.gameVersions.add("Fabric")
+    mainFile.gameVersions.add("1.21.1")
+    mainFile.gameVersions.add("Server")
+    mainFile.gameVersions.add("Client")
 
     mainFile.addRequirement("simple-voice-chat")
-    //mainFile.addRequirement("forge-config-api-port")
 
 }
 

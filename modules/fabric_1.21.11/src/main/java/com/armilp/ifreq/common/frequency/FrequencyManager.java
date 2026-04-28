@@ -1,27 +1,31 @@
 package com.armilp.ifreq.common.frequency;
 
 import com.armilp.ifreq.common.items.ItemWalkieTalkie;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.item.ItemStack;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.World;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Mod.EventBusSubscriber(modid = "ifreq")
 public class FrequencyManager {
 
     private static final Map<Double, Set<UUID>> frequencyListeners = new ConcurrentHashMap<>();
     private static final Map<UUID, Double> playerFrequencies = new ConcurrentHashMap<>();
 
-    public static boolean joinFrequency(ServerPlayer player, double frequency) {
+    public static void register() {
+        // Listen for player disconnect to clean up frequencies
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+                leaveAllFrequencies(handler.player)
+        );
+    }
+
+    public static boolean joinFrequency(ServerPlayerEntity player, double frequency) {
         if (!hasWalkieTalkie(player)) return false;
 
         frequency = roundToTenth(frequency);
-        UUID playerId = player.getUUID();
+        UUID playerId = player.getUuid();
 
         leaveAllFrequencies(player);
 
@@ -31,8 +35,8 @@ public class FrequencyManager {
         return true;
     }
 
-    public static void leaveAllFrequencies(ServerPlayer player) {
-        UUID playerId = player.getUUID();
+    public static void leaveAllFrequencies(ServerPlayerEntity player) {
+        UUID playerId = player.getUuid();
         Double currentFrequency = playerFrequencies.remove(playerId);
 
         if (currentFrequency != null) {
@@ -41,7 +45,7 @@ public class FrequencyManager {
                 listeners.remove(playerId);
                 if (listeners.isEmpty()) {
                     frequencyListeners.remove(currentFrequency);
-                    cleanupFrequencyData(player.level(), currentFrequency);
+                    cleanupFrequencyData(player.getEntityWorld(), currentFrequency);
                 }
             }
         }
@@ -55,15 +59,15 @@ public class FrequencyManager {
         return playerFrequencies.getOrDefault(playerId, -1.0);
     }
 
-    public static boolean isPlayerOnFrequency(ServerPlayer player, double frequency) {
-        Double playerFreq = playerFrequencies.get(player.getUUID());
+    public static boolean isPlayerOnFrequency(ServerPlayerEntity player, double frequency) {
+        Double playerFreq = playerFrequencies.get(player.getUuid());
         return playerFreq != null && Math.abs(playerFreq - roundToTenth(frequency)) < 0.01;
     }
 
-    public static boolean hasWalkieTalkie(ServerPlayer player) {
-        ItemStack main = player.getMainHandItem();
+    public static boolean hasWalkieTalkie(ServerPlayerEntity player) {
+        ItemStack main = player.getMainHandStack();
         if (main.getItem() instanceof ItemWalkieTalkie) return true;
-        ItemStack off = player.getOffhandItem();
+        ItemStack off = player.getOffHandStack();
         return off.getItem() instanceof ItemWalkieTalkie;
     }
 
@@ -83,19 +87,12 @@ public class FrequencyManager {
         return frequency >= 87.5 && frequency <= 108.0;
     }
 
-    private static void cleanupFrequencyData(Level level, double frequency) {
+    private static void cleanupFrequencyData(World world, double frequency) {
         try {
-            FrequencySavedData savedData = FrequencySavedData.get(level);
+            FrequencySavedData savedData = FrequencySavedData.get(world);
             savedData.getGroupName(frequency).ifPresent(savedData::removeMapping);
         } catch (Exception e) {
             System.err.println("Error cleaning frequency data " + frequency + ": " + e.getMessage());
-        }
-    }
-
-    @SubscribeEvent
-    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            leaveAllFrequencies(serverPlayer);
         }
     }
 }

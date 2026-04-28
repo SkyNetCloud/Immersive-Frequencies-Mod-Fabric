@@ -1,28 +1,25 @@
 package com.armilp.ifreq.common.registry;
 
 import com.armilp.ifreq.MainEZ;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.util.Identifier;
 
-@Mod.EventBusSubscriber(modid = MainEZ.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModSounds {
-    public static final DeferredRegister<SoundEvent> SOUND_EVENTS =
-            DeferredRegister.create(Registries.SOUND_EVENT, MainEZ.MODID);
 
-    public static final RegistryObject<SoundEvent> RADIO_BEEP = registerSound("walkie_join");
-    public static final RegistryObject<SoundEvent> RADIO_NOISE = registerSound("radio_noise");
+    public static final SoundEvent RADIO_BEEP = registerSound("walkie_join");
+    public static final SoundEvent RADIO_NOISE = registerSound("radio_noise");
 
-    private static RegistryObject<SoundEvent> registerSound(String name) {
-        return SOUND_EVENTS.register(name, () ->
-                SoundEvent.createVariableRangeEvent(new ResourceLocation(MainEZ.MODID, name)));
+    private static SoundEvent registerSound(String name) {
+        Identifier id = Identifier.of(MainEZ.MODID, name);
+        return Registry.register(
+                Registries.SOUND_EVENT,
+                id,
+                SoundEvent.of(id)
+        );
     }
 
-    public static void register(IEventBus eventBus) {
-        SOUND_EVENTS.register(eventBus);
+    public static void register() {
     }
 }

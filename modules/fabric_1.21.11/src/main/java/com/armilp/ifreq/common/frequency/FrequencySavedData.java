@@ -1,31 +1,54 @@
 package com.armilp.ifreq.common.frequency;
 
 import com.armilp.ifreq.MainEZ;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.saveddata.SavedData;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.PersistentState;
+import net.minecraft.world.PersistentStateManager;
+import net.minecraft.world.PersistentStateType;
+import net.minecraft.world.World;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class FrequencySavedData extends SavedData {
+public class FrequencySavedData extends PersistentState {
 
     private static final String DATA_NAME = "ifrequency";
-    private static final String MAPPINGS_KEY = "mappings";
-    private static final String METADATA_KEY = "metadata";
-    private static final String VERSION_KEY = "version";
     private static final int CURRENT_VERSION = 1;
 
     private final Map<String, Double> groupToFrequency;
     private final Map<Double, String> frequencyToGroup;
     private final Set<String> activeGroups;
+
+    // Codec for serialization/deserialization
+    public static final Codec<FrequencySavedData> CODEC = RecordCodecBuilder.create(instance ->
+            instance.group(
+                    Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
+                            .fieldOf("group_to_frequency")
+                            .forGetter(data -> data.groupToFrequency),
+                    Codec.unboundedMap(Codec.DOUBLE, Codec.STRING)
+                            .fieldOf("frequency_to_group")
+                            .forGetter(data -> data.frequencyToGroup),
+                    Codec.list(Codec.STRING)
+                            .xmap(
+                                    HashSet::new,
+                                    ArrayList::new
+                            )
+                            .fieldOf("active_groups")
+                            .forGetter(data -> (HashSet<String>) data.activeGroups)
+            ).apply(instance, FrequencySavedData::new)
+    );
+
+    // Constructor for codec
+    public FrequencySavedData(Map<String, Double> groupToFrequency,
+                              Map<Double, String> frequencyToGroup,
+                              Set<String> activeGroups) {
+        this.groupToFrequency = new ConcurrentHashMap<>(groupToFrequency);
+        this.frequencyToGroup = new ConcurrentHashMap<>(frequencyToGroup);
+        this.activeGroups = ConcurrentHashMap.newKeySet();
+        this.activeGroups.addAll(activeGroups);
+    }
 
     public FrequencySavedData() {
         this.groupToFrequency = new ConcurrentHashMap<>();
@@ -33,72 +56,21 @@ public class FrequencySavedData extends SavedData {
         this.activeGroups = ConcurrentHashMap.newKeySet();
     }
 
-    public static FrequencySavedData get(Level level) {
-        if (!(level instanceof ServerLevel serverLevel)) {
-            throw new IllegalStateException("Cannot access world data from client side!");
-        }
-        return serverLevel.getDataStorage().computeIfAbsent(
-                FrequencySavedData::load,
-                FrequencySavedData::new,
-                DATA_NAME
+    public static PersistentStateType<FrequencySavedData> getType() {
+        return new PersistentStateType<>(
+                DATA_NAME,                    // String name
+                FrequencySavedData::new,      // Supplier<T> constructor
+                CODEC, // Codec<T>
+                null // datafixer (not needed since we handle versioning manually)
         );
     }
 
-    public Optional<String> getGroupName(double freq) {
-        return Optional.ofNullable(frequencyToGroup.get(FrequencyManager.roundToTenth(freq)));
-    }
-
-    public Optional<Double> getFrequency(String groupName) {
-        return Optional.ofNullable(groupToFrequency.get(groupName));
-    }
-
-    private static FrequencySavedData load(CompoundTag tag) {
-        FrequencySavedData data = new FrequencySavedData();
-
-        int version = tag.getInt(VERSION_KEY);
-        if (version > CURRENT_VERSION) {
-            throw new IllegalStateException("Unsupported data version: " + version);
+    public static FrequencySavedData get(World world) {
+        if (!(world instanceof ServerWorld serverWorld)) {
+            throw new IllegalStateException("Cannot access world data from client side!");
         }
-
-        if (tag.contains(MAPPINGS_KEY)) {
-            CompoundTag mappings = tag.getCompound(MAPPINGS_KEY);
-            for (String key : mappings.getAllKeys()) {
-                data.addMapping(key, mappings.getDouble(key), false);
-            }
-        }
-
-        if (tag.contains("active_groups")) {
-            ListTag activeGroupsList = tag.getList("active_groups", Tag.TAG_STRING);
-            for (int i = 0; i < activeGroupsList.size(); i++) {
-                data.activeGroups.add(activeGroupsList.getString(i));
-            }
-        }
-
-        return data;
-    }
-
-    @Override
-    public CompoundTag save(CompoundTag tag) {
-        tag.putInt(VERSION_KEY, CURRENT_VERSION);
-
-        CompoundTag mappings = new CompoundTag();
-        for (Map.Entry<String, Double> entry : groupToFrequency.entrySet()) {
-            mappings.putDouble(entry.getKey(), entry.getValue());
-        }
-        tag.put(MAPPINGS_KEY, mappings);
-
-        ListTag activeGroupsList = new ListTag();
-        for (String group : activeGroups) {
-            activeGroupsList.add(StringTag.valueOf(group));
-        }
-        tag.put("active_groups", activeGroupsList);
-
-        CompoundTag metadata = new CompoundTag();
-        metadata.putLong("last_saved", System.currentTimeMillis());
-        metadata.putInt("total_groups", groupToFrequency.size());
-        tag.put(METADATA_KEY, metadata);
-
-        return tag;
+        PersistentStateManager manager = serverWorld.getPersistentStateManager();
+        return manager.getOrCreate(getType());
     }
 
     public String getOrCreateGroupName(double freq) {
@@ -138,7 +110,7 @@ public class FrequencySavedData extends SavedData {
         groupToFrequency.put(groupName, frequency);
         frequencyToGroup.put(frequency, groupName);
 
-        if (markDirty) setDirty();
+        if (markDirty) markDirty();
     }
 
     public boolean removeMapping(String groupName) {
@@ -148,7 +120,7 @@ public class FrequencySavedData extends SavedData {
         if (frequency != null) {
             frequencyToGroup.remove(frequency);
             activeGroups.remove(groupName);
-            setDirty();
+            markDirty();
             return true;
         }
         return false;
@@ -164,6 +136,14 @@ public class FrequencySavedData extends SavedData {
 
     public Set<String> getAllGroupNames() {
         return new HashSet<>(groupToFrequency.keySet());
+    }
+
+    public Optional<String> getGroupName(double freq) {
+        return Optional.ofNullable(frequencyToGroup.get(FrequencyManager.roundToTenth(freq)));
+    }
+
+    public Optional<Double> getFrequency(String groupName) {
+        return Optional.ofNullable(groupToFrequency.get(groupName));
     }
 
     public void cleanupInactiveGroups() {

@@ -3,7 +3,7 @@
     "category": "player",
     "sounds": [
       {
-        "name": "ezfreq:walkie_join",
+        "name": "ifreq:walkie_join",
         "stream": false
       }
     ]
@@ -12,7 +12,7 @@
     "category": "player",
     "sounds": [
       {
-        "name": "ezfreq:radio_noise",
+        "name": "ifreq:radio_noise",
         "stream": false
       }
     ]
