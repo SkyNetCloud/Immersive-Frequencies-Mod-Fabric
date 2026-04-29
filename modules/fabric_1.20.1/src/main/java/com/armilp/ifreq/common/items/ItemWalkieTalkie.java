@@ -1,9 +1,11 @@
 package com.armilp.ifreq.common.items;
 
+import com.armilp.ifreq.client.geo.renderer.WalkieGeoItemRenderer;
 import com.armilp.ifreq.common.registry.ModSounds;
+import io.wispforest.accessories.api.AccessoryItem;
 import net.minecraft.client.item.TooltipContext;
+import net.minecraft.client.render.item.BuiltinModelItemRenderer;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
@@ -11,10 +13,22 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
+import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.animatable.client.RenderProvider;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class ItemWalkieTalkie extends Item {
+public class ItemWalkieTalkie extends AccessoryItem implements GeoItem {
+    private static final RawAnimation OFF_STATE_ANIM = RawAnimation.begin().thenPlay("off_state");
+    private static final RawAnimation ON_STATE_ANIM = RawAnimation.begin().thenPlay("on_state");
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private final Supplier<Object> renderProvider = GeoItem.makeRenderer(this);
 
     private final double maxDistance;
 
@@ -34,6 +48,7 @@ public class ItemWalkieTalkie extends Item {
         tooltip.add(Text.translatable("item.ifreq.walkie_talkie.tooltip.range",
                 (int) maxDistance));
     }
+
 
     @Override
     public TypedActionResult<ItemStack> use(World world, PlayerEntity player, Hand hand) {
@@ -97,5 +112,34 @@ public class ItemWalkieTalkie extends Item {
     public static void setOn(ItemStack stack, boolean on) {
         NbtCompound nbt = getOrCreateNbt(stack);
         nbt.putBoolean("On", on);
+    }
+
+    @Override
+    public void createRenderer(Consumer<Object> consumer) {
+        consumer.accept(new RenderProvider() {
+            private WalkieGeoItemRenderer renderer;
+            @Override
+            public BuiltinModelItemRenderer getCustomRenderer() {
+               if (this.renderer == null)
+                   this.renderer = new WalkieGeoItemRenderer();
+
+               return this.renderer;
+            }
+        });
+    }
+
+    @Override
+    public Supplier<Object> getRenderProvider() {
+        return this.renderProvider;
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.cache;
     }
 }
