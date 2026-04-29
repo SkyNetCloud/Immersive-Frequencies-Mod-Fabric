@@ -17,4 +17,4 @@ rootProject.name = 'ezfreq'
 
 
 include "modules:fabric_1.20.1"
-include "modules:fabric_1.21.11"
+//include "modules:fabric_1.21.11"
