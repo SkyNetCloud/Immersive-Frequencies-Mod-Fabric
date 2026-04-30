@@ -12,4 +12,5 @@ public class PlayerEventHandler {
             Plugin.unsubscribeFromAll(player);
         });
     }
+
 }

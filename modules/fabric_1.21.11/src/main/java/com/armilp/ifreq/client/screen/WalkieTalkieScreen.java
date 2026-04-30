@@ -3,9 +3,8 @@ package com.armilp.ifreq.client.screen;
 import com.armilp.ifreq.MainEZ;
 import com.armilp.ifreq.common.items.ItemWalkieTalkie;
 import com.armilp.ifreq.common.menu.WalkieTalkieMenu;
-import com.armilp.ifreq.network.IfreqNetwork;
-import com.armilp.ifreq.network.packets.WalkieFrequencyPacket;
-import com.armilp.ifreq.network.packets.WalkiePowerPacket;
+import com.armilp.ifreq.network.WalkieFrequencyPacket;
+import com.armilp.ifreq.network.WalkiePowerPacket;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gl.RenderPipelines;
@@ -13,10 +12,11 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.input.CharInput;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
@@ -61,7 +61,9 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
     private static final int OFF_ICON_X = OFF_X + (TOGGLE_W - ICON_SIZE) / 2;
     private static final int ON_ICON_X  = ON_X  + (TOGGLE_W - ICON_SIZE) / 2;
 
-    private static final int TEXT_COLOR = -12566464;
+    private static final int TEXT_COLOR = -1;
+
+
 
     private double frequency;
     private boolean isOn;
@@ -81,7 +83,6 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
         this.isOn      = ItemWalkieTalkie.isOn(stack);
         this.frequency = clampFM(frequency);
     }
-
 
     @Override
     protected void init() {
@@ -125,7 +126,7 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
     private void onFrequencyInputChanged(String raw) {
         String text  = raw.replace(',', '.');
         boolean valid = isValidFM(text);
-        frequencyInput.setEditableColor(valid ? -1 : -699051);
+        frequencyInput.setEditableColor(valid ? -1 : 1673355);
         setButton.active = valid;
     }
 
@@ -135,7 +136,7 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
                     frequencyInput.getText().replace(',', '.')
             ));
             ItemWalkieTalkie.setFrequency(handler.itemStack, newFreq);
-            IfreqNetwork.ifreqNetworkService.sendToServer((new WalkieFrequencyPacket(newFreq)));
+            ClientPlayNetworking.send(new WalkieFrequencyPacket(newFreq));
             this.client.player.closeHandledScreen();
         } catch (NumberFormatException ignored) {}
     }
@@ -143,7 +144,7 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
     private void setPowerState(boolean on) {
         this.isOn = on;
         ItemWalkieTalkie.setOn(handler.itemStack, on);
-        IfreqNetwork.ifreqNetworkService.sendToServer((new WalkiePowerPacket(on)));
+        ClientPlayNetworking.send(new WalkiePowerPacket(on));
         updatePowerButtons();
     }
 
@@ -154,18 +155,16 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
 
     @Override
     protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        RenderPipeline pipeline = RenderPipelines.GUI_TEXTURED;
+        RenderPipeline pipline = RenderPipelines.GUI_TEXTURED;
 
-        context.drawTexture(pipeline,WALKIE_GUI, x, y, 0, 0, GUI_W, GUI_H, GUI_W, GUI_H);
+        context.drawTexture(pipline,WALKIE_GUI, x, y, 0, 0, GUI_W, GUI_H, GUI_W, GUI_H);
 
-        context.drawTexture(pipeline,TEX_OFF, x + OFF_ICON_X, y + ICON_Y, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
-        context.drawTexture(pipeline,TEX_ON,  x + ON_ICON_X,  y + ICON_Y, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+        context.drawTexture(pipline,TEX_OFF, x + OFF_ICON_X, y + ICON_Y, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+        context.drawTexture(pipline,TEX_ON,  x + ON_ICON_X,  y + ICON_Y, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
     }
 
-
-        @Override
+    @Override
     protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        // Title - coordinates are relative to GUI origin (x,y already translated)
         String title = Text.translatable("gui.ifreq.walkie_talkie.title").getString();
         context.drawText(textRenderer, title, (GUI_W - textRenderer.getWidth(title)) / 2, TITLE_Y, TEXT_COLOR, false);
 
@@ -179,8 +178,7 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
                 lx, (int)(FREQ_LABEL_Y / scale), TEXT_COLOR, false);
         context.drawText(textRenderer,
                 Text.translatable("gui.ifreq.walkie_talkie.range_label",
-                        String.format("%.1f", FM_MIN),
-                        String.format("%.1f", FM_MAX)).getString(),
+                        String.format("%.1f", FM_MIN), String.format("%.1f", FM_MAX)).getString(),
                 lx, (int)(RANGE_LABEL_Y / scale), TEXT_COLOR, false);
 
         String powerLabel = Text.translatable("gui.ifreq.walkie_talkie.power_label").getString();
@@ -193,7 +191,7 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderBackground(context, mouseX, mouseY, delta);
+        renderBackground(context,mouseX,mouseY,delta);
         super.render(context, mouseX, mouseY, delta);
         drawMouseoverTooltip(context, mouseX, mouseY);
     }
@@ -206,25 +204,6 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
             return false;
         }
     }
-
-    @Override
-    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
-        if (frequencyInput != null && frequencyInput.isFocused()) {
-            if (frequencyInput.keyPressed(input)) return true;
-            if (this.client.options.inventoryKey.matchesKey(input)) return true;
-            return false;
-        }
-        return super.keyPressed(input);
-    }
-
-    @Override
-    public boolean charTyped(CharInput input) {
-        if (frequencyInput != null && frequencyInput.isFocused()) {
-            return frequencyInput.charTyped(input);
-        }
-        return super.charTyped(input);
-    }
-
 
     private static double roundToTenth(double value) {
         return Math.round(value * 10.0) / 10.0;

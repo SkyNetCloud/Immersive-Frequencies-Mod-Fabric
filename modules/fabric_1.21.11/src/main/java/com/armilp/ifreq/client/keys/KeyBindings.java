@@ -7,16 +7,16 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
+import static com.armilp.ifreq.MainEZ.MODID;
+
 public class KeyBindings {
 
     // Create a custom category for your mod
-    public static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(
-            Identifier.of(MainEZ.MODID, MainEZ.MODID)
-    );
+    public static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of(MODID ,"key.category." + MODID));
 
     public static KeyBinding OPEN_WALKIE_GUI = KeyBindingHelper.registerKeyBinding(
             new KeyBinding(
-                    "key." + MainEZ.MODID + ".open_walkie_gui",
+                    "key." + MODID + ".open_walkie_gui",
                     InputUtil.Type.KEYSYM,
                     GLFW.GLFW_KEY_R,
                     CATEGORY

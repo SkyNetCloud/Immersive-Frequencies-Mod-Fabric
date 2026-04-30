@@ -3,11 +3,10 @@ package com.armilp.ifreq.common.frequency;
 import com.armilp.ifreq.MainEZ;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.PersistentState;
-import net.minecraft.world.PersistentStateManager;
 import net.minecraft.world.PersistentStateType;
-import net.minecraft.world.World;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,40 +14,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FrequencySavedData extends PersistentState {
 
     private static final String DATA_NAME = "ifrequency";
-    private static final int CURRENT_VERSION = 1;
 
+    // ⚠️ NOTE: Using String for frequency keys avoids double precision issues
     private final Map<String, Double> groupToFrequency;
-    private final Map<Double, String> frequencyToGroup;
+    private final Map<String, String> frequencyToGroup;
     private final Set<String> activeGroups;
 
-    // Codec for serialization/deserialization
-    public static final Codec<FrequencySavedData> CODEC = RecordCodecBuilder.create(instance ->
-            instance.group(
-                    Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
-                            .fieldOf("group_to_frequency")
-                            .forGetter(data -> data.groupToFrequency),
-                    Codec.unboundedMap(Codec.DOUBLE, Codec.STRING)
-                            .fieldOf("frequency_to_group")
-                            .forGetter(data -> data.frequencyToGroup),
-                    Codec.list(Codec.STRING)
-                            .xmap(
-                                    HashSet::new,
-                                    ArrayList::new
-                            )
-                            .fieldOf("active_groups")
-                            .forGetter(data -> (HashSet<String>) data.activeGroups)
-            ).apply(instance, FrequencySavedData::new)
-    );
-
-    // Constructor for codec
-    public FrequencySavedData(Map<String, Double> groupToFrequency,
-                              Map<Double, String> frequencyToGroup,
-                              Set<String> activeGroups) {
-        this.groupToFrequency = new ConcurrentHashMap<>(groupToFrequency);
-        this.frequencyToGroup = new ConcurrentHashMap<>(frequencyToGroup);
-        this.activeGroups = ConcurrentHashMap.newKeySet();
-        this.activeGroups.addAll(activeGroups);
-    }
+    // =========================
+    // Constructors
+    // =========================
 
     public FrequencySavedData() {
         this.groupToFrequency = new ConcurrentHashMap<>();
@@ -56,27 +30,65 @@ public class FrequencySavedData extends PersistentState {
         this.activeGroups = ConcurrentHashMap.newKeySet();
     }
 
-    public static PersistentStateType<FrequencySavedData> getType() {
-        return new PersistentStateType<>(
-                DATA_NAME,                    // String name
-                FrequencySavedData::new,      // Supplier<T> constructor
-                CODEC, // Codec<T>
-                null // datafixer (not needed since we handle versioning manually)
-        );
+    private FrequencySavedData(Map<String, Double> groupToFrequency,
+                               Map<String, String> frequencyToGroup,
+                               Set<String> activeGroups) {
+        this.groupToFrequency = new ConcurrentHashMap<>(groupToFrequency);
+        this.frequencyToGroup = new ConcurrentHashMap<>(frequencyToGroup);
+        this.activeGroups = ConcurrentHashMap.newKeySet();
+        this.activeGroups.addAll(activeGroups);
     }
 
-    public static FrequencySavedData get(World world) {
-        if (!(world instanceof ServerWorld serverWorld)) {
-            throw new IllegalStateException("Cannot access world data from client side!");
-        }
-        PersistentStateManager manager = serverWorld.getPersistentStateManager();
-        return manager.getOrCreate(getType());
+    // =========================
+    // CODEC (replaces ALL NBT)
+    // =========================
+
+    public static final Codec<FrequencySavedData> CODEC =
+            RecordCodecBuilder.create(instance -> instance.group(
+                    Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
+                            .fieldOf("group_to_frequency")
+                            .forGetter(d -> d.groupToFrequency),
+
+                    Codec.unboundedMap(Codec.STRING, Codec.STRING)
+                            .fieldOf("frequency_to_group")
+                            .forGetter(d -> d.frequencyToGroup),
+
+                    Codec.STRING.listOf()
+                            .fieldOf("active_groups")
+                            .forGetter(d -> new ArrayList<>(d.activeGroups))
+            ).apply(instance, (g2f, f2g, active) ->
+                    new FrequencySavedData(g2f, f2g, new HashSet<>(active))
+            ));
+
+    // =========================
+    // TYPE (new 1.21 system)
+    // =========================
+
+    public static final PersistentStateType<FrequencySavedData> TYPE =
+            new PersistentStateType<>(
+                    DATA_NAME,
+                    FrequencySavedData::new,
+                    CODEC,
+                    DataFixTypes.LEVEL
+            );
+
+    // =========================
+    // Access
+    // =========================
+
+    public static FrequencySavedData get(ServerWorld world) {
+        return world.getPersistentStateManager().getOrCreate(TYPE);
     }
+
+    // =========================
+    // Core Logic
+    // =========================
 
     public String getOrCreateGroupName(double freq) {
         freq = FrequencyManager.roundToTenth(freq);
+        String freqKey = toKey(freq);
 
-        String existing = frequencyToGroup.get(freq);
+        String existing = frequencyToGroup.get(freqKey);
         if (existing != null) {
             activeGroups.add(existing);
             return existing;
@@ -93,22 +105,25 @@ public class FrequencySavedData extends PersistentState {
         String baseName = "freq_" + String.valueOf(freq).replace(".", "_");
         String name = baseName;
         int counter = 1;
+
         while (groupToFrequency.containsKey(name)) {
             name = baseName + "_" + counter++;
         }
+
         return name;
     }
 
     private void addMapping(String groupName, double frequency, boolean markDirty) {
         frequency = FrequencyManager.roundToTenth(frequency);
+        String freqKey = toKey(frequency);
 
-        String existingGroup = frequencyToGroup.get(frequency);
+        String existingGroup = frequencyToGroup.get(freqKey);
         if (existingGroup != null && !existingGroup.equals(groupName)) {
             removeMapping(existingGroup);
         }
 
         groupToFrequency.put(groupName, frequency);
-        frequencyToGroup.put(frequency, groupName);
+        frequencyToGroup.put(freqKey, groupName);
 
         if (markDirty) markDirty();
     }
@@ -118,7 +133,7 @@ public class FrequencySavedData extends PersistentState {
 
         Double frequency = groupToFrequency.remove(groupName);
         if (frequency != null) {
-            frequencyToGroup.remove(frequency);
+            frequencyToGroup.remove(toKey(frequency));
             activeGroups.remove(groupName);
             markDirty();
             return true;
@@ -127,11 +142,11 @@ public class FrequencySavedData extends PersistentState {
     }
 
     public boolean hasGroup(double frequency) {
-        return frequencyToGroup.containsKey(FrequencyManager.roundToTenth(frequency));
+        return frequencyToGroup.containsKey(toKey(FrequencyManager.roundToTenth(frequency)));
     }
 
     public Set<Double> getAllFrequencies() {
-        return new HashSet<>(frequencyToGroup.keySet());
+        return new HashSet<>(groupToFrequency.values());
     }
 
     public Set<String> getAllGroupNames() {
@@ -139,7 +154,7 @@ public class FrequencySavedData extends PersistentState {
     }
 
     public Optional<String> getGroupName(double freq) {
-        return Optional.ofNullable(frequencyToGroup.get(FrequencyManager.roundToTenth(freq)));
+        return Optional.ofNullable(frequencyToGroup.get(toKey(FrequencyManager.roundToTenth(freq))));
     }
 
     public Optional<Double> getFrequency(String groupName) {
@@ -169,22 +184,37 @@ public class FrequencySavedData extends PersistentState {
     }
 
     public void markGroupActive(String groupName) {
-        if (groupToFrequency.containsKey(groupName)) activeGroups.add(groupName);
+        if (groupToFrequency.containsKey(groupName)) {
+            activeGroups.add(groupName);
+            markDirty();
+        }
     }
 
     public void markGroupInactive(String groupName) {
-        activeGroups.remove(groupName);
+        if (activeGroups.remove(groupName)) {
+            markDirty();
+        }
     }
 
     public String getDebugInfo() {
         StringBuilder sb = new StringBuilder("=== FrequencySavedData ===\n");
         sb.append("Mappings: ").append(groupToFrequency.size()).append("\n");
         sb.append("Active groups: ").append(activeGroups.size()).append("\n");
+
         for (Map.Entry<String, Double> entry : groupToFrequency.entrySet()) {
             sb.append("  '").append(entry.getKey()).append("' -> ").append(entry.getValue()).append(" MHz");
             if (activeGroups.contains(entry.getKey())) sb.append(" (active)");
             sb.append("\n");
         }
+
         return sb.toString();
+    }
+
+    // =========================
+    // Helpers
+    // =========================
+
+    private static String toKey(double freq) {
+        return String.format("%.1f", freq);
     }
 }

@@ -1,28 +1,46 @@
 package com.armilp.ifreq.common.items;
 
+import com.armilp.ifreq.common.registry.ModComponents;
+import com.armilp.ifreq.common.registry.ModSounds;
+import net.minecraft.component.ComponentType;
 import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
 import net.minecraft.component.type.TooltipDisplayComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipData;
 import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animatable.manager.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.animation.object.PlayState;
+import software.bernie.geckolib.constant.DataTickets;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
-import java.util.Optional;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class ItemWalkieTalkie extends Item {
+public class ItemWalkieTalkie extends Item implements GeoItem {
+
+    public static final ComponentType<Double> FREQUENCY = ModComponents.FREQUENCY;
+    public static final ComponentType<Boolean> POWER = ModComponents.POWER;
+
+    private static final RawAnimation OFF_STATE_ANIM = RawAnimation.begin().thenPlayAndHold("off_walkie_state");
+    private static final RawAnimation ON_STATE_ANIM = RawAnimation.begin().thenPlayAndHold("on_walkie_state");
+
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     private final double maxDistance;
 
-    public ItemWalkieTalkie(Item.Settings settings, double maxDistance) {
+    public ItemWalkieTalkie(Settings settings, double maxDistance) {
         super(settings);
         this.maxDistance = maxDistance;
     }
@@ -31,12 +49,8 @@ public class ItemWalkieTalkie extends Item {
         return maxDistance;
     }
 
-    @Override
-    public Optional<TooltipData> getTooltipData(ItemStack stack) {
-        return super.getTooltipData(stack);
-    }
 
-        @Override
+    @Override
     public void appendTooltip(ItemStack stack, TooltipContext context, TooltipDisplayComponent displayComponent, Consumer<Text> textConsumer, TooltipType type) {
         textConsumer.accept(Text.translatable("item.ifreq.walkie_talkie.tooltip.frequency",
                 String.format("%.1f", getFrequency(stack))));
@@ -44,58 +58,74 @@ public class ItemWalkieTalkie extends Item {
                 (int) maxDistance));
     }
 
+
     @Override
     public ActionResult use(World world, PlayerEntity player, Hand hand) {
         ItemStack stack = player.getStackInHand(hand);
+
         if (!world.isClient()) {
+            boolean newState = !isOn(stack);
+            setOn(stack, newState);
+
+            if (newState) {
+                world.playSound(null, player.getBlockPos(),
+                        ModSounds.RADIO_BEEP,
+                        net.minecraft.sound.SoundCategory.PLAYERS,
+                        1.0f, 1.0f);
+            } else {
+                world.playSound(null, player.getBlockPos(),
+                        ModSounds.RADIO_NOISE,
+                        net.minecraft.sound.SoundCategory.PLAYERS,
+                        1.0f, 1.0f);
+            }
+
             player.sendMessage(
                     Text.translatable("message.ifreq.walkie_talkie.frequency",
                             String.format("%.1f", getFrequency(stack))), true
             );
         }
+
         return ActionResult.SUCCESS;
     }
 
-    // ── Helpers to read/write custom data via CUSTOM_DATA component ──────────
 
-    private static NbtCompound getOrCreateNbt(ItemStack stack) {
-        NbtComponent component = stack.get(DataComponentTypes.CUSTOM_DATA);
-        NbtCompound nbt = component != null ? component.copyNbt() : new NbtCompound();
-        return nbt;
-    }
 
-    private static void saveNbt(ItemStack stack, NbtCompound nbt) {
-        stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
-    }
-
-    private static @Nullable NbtCompound getNbt(ItemStack stack) {
-        NbtComponent component = stack.get(DataComponentTypes.CUSTOM_DATA);
-        return component != null ? component.copyNbt() : null;
-    }
-
-    // ── API ──────────────────────────────────────────────────────────────────
 
     public static void setFrequency(ItemStack stack, double frequency) {
-        NbtCompound nbt = getOrCreateNbt(stack);
-        nbt.putDouble("Frequency", frequency);
-        saveNbt(stack, nbt);
+        stack.set(FREQUENCY, frequency);
     }
 
     public static double getFrequency(ItemStack stack) {
-        NbtCompound nbt = getNbt(stack);
-        if (nbt == null) return 0.0D;
-        return nbt.getDouble("Frequency").orElse(0.0D);
+        return stack.getOrDefault(FREQUENCY, 0.0D);
     }
 
     public static boolean isOn(ItemStack stack) {
-        NbtCompound nbt = getNbt(stack);
-        if (nbt == null) return false;
-        return nbt.getBoolean("On").orElse(false);
+        return stack.getOrDefault(POWER, false);
     }
 
     public static void setOn(ItemStack stack, boolean on) {
-        NbtCompound nbt = getOrCreateNbt(stack);
-        nbt.putBoolean("On", on);
-        saveNbt(stack, nbt);
+        stack.set(POWER, on);
+    }
+
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>( "StateController", 0, state -> {
+
+            Item stack = state.getData(DataTickets.ITEM);
+
+            if (stack == null || stack.getDefaultStack().isEmpty()) {
+                return PlayState.STOP;
+            }
+
+            return state.setAndContinue(
+                    isOn(stack.getDefaultStack()) ? ON_STATE_ANIM : OFF_STATE_ANIM
+            );
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.cache;
     }
 }

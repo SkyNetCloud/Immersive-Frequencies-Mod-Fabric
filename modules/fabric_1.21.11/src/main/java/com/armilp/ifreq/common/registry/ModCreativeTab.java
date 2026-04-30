@@ -16,9 +16,7 @@ public class ModCreativeTab {
     public static final ItemGroup EZFREQ_TAB = FabricItemGroup.builder()
             .icon(() -> new ItemStack(ModItems.WALKIE_TALKIE))
             .displayName(Text.translatable("itemGroup.ifreq"))
-            .entries((context, entries) -> {
-                entries.add(ModItems.WALKIE_TALKIE);
-            })
+            .entries((context, entries) -> entries.add(ModItems.WALKIE_TALKIE))
             .build();
 
     public static void register() {
