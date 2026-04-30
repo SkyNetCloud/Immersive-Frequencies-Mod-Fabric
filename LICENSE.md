@@ -1,0 +1,3 @@
+All Rights Reserved
+
+© 2026
