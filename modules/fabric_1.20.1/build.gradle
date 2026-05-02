@@ -112,7 +112,7 @@ tasks.register('publishCurseForge', TaskPublishCurseForge) {
 
     mainFile.addRequirement("simple-voice-chat")
     mainFile.addRequirement("fabric-api")
-    mainFile.addOptional("")
+    mainFile.addOptional("accessories")
 
 }
 
@@ -134,7 +134,7 @@ modrinth {
     dependencies { // A special DSL for creating dependencies
         required.project "fabric-api"
         required.project 'simple-voice-chat'
-        optional.project ''
+        optional.project 'accessories'
     }
 }
 
