@@ -16,10 +16,6 @@ public class MainEZ implements ModInitializer {
 
     @Override
     public void onInitialize() {
-
-    }
-
-    public MainEZ() {
         ModItems.register();
         ModSounds.register();
         ModCreativeTab.register();
@@ -28,6 +24,4 @@ public class MainEZ implements ModInitializer {
         ModMenus.register();
         PlayerEventHandler.register();
     }
-
-
 }

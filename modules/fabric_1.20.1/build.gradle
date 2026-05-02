@@ -49,7 +49,9 @@ dependencies {
     modRuntimeOnly "maven.modrinth:simple-voice-chat:fabric-${voicechat_version}"
     implementation "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
 
-    modImplementation("io.wispforest:accessories-fabric:${project.accessories_version}")
+    // Accessories Mod dependencies
+    modCompileOnly("io.wispforest:accessories-fabric:${project.accessories_version}")
+    modRuntimeOnly("io.wispforest:accessories-fabric:${project.accessories_version}")
 
     modImplementation("software.bernie.geckolib:geckolib-fabric-${minecraft_version}:${geckolib_version}")
     implementation("com.eliotlash.mclib:mclib:20")
@@ -110,6 +112,7 @@ tasks.register('publishCurseForge', TaskPublishCurseForge) {
 
     mainFile.addRequirement("simple-voice-chat")
     mainFile.addRequirement("fabric-api")
+    mainFile.addOptional("")
 
 }
 
@@ -131,6 +134,7 @@ modrinth {
     dependencies { // A special DSL for creating dependencies
         required.project "fabric-api"
         required.project 'simple-voice-chat'
+        optional.project ''
     }
 }
 

@@ -2,10 +2,10 @@ package com.armilp.ifreq.common.items;
 
 import com.armilp.ifreq.client.geo.renderer.WalkieGeoItemRenderer;
 import com.armilp.ifreq.common.registry.ModSounds;
-import io.wispforest.accessories.api.AccessoryItem;
 import net.minecraft.client.item.TooltipContext;
 import net.minecraft.client.render.item.BuiltinModelItemRenderer;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
@@ -15,18 +15,22 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.animatable.client.RenderProvider;
+import software.bernie.geckolib.constant.DataTickets;
+import software.bernie.geckolib.core.animatable.GeoAnimatable;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class ItemWalkieTalkie extends AccessoryItem implements GeoItem {
-    private static final RawAnimation OFF_STATE_ANIM = RawAnimation.begin().thenPlay("off_state");
-    private static final RawAnimation ON_STATE_ANIM = RawAnimation.begin().thenPlay("on_state");
+public class ItemWalkieTalkie extends Item implements GeoItem {
+    private static final RawAnimation OFF_STATE_ANIM = RawAnimation.begin().thenPlayAndHold("off_walkie_state");
+    private static final RawAnimation ON_STATE_ANIM = RawAnimation.begin().thenPlay("on_walkie_state");
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final Supplier<Object> renderProvider = GeoItem.makeRenderer(this);
 
@@ -90,8 +94,6 @@ public class ItemWalkieTalkie extends AccessoryItem implements GeoItem {
         return stack.getNbt();
     }
 
-    // ── API for 1.20.1 ─────────────────────────────────────────────────────────
-
     public static void setFrequency(ItemStack stack, double frequency) {
         NbtCompound nbt = getOrCreateNbt(stack);
         nbt.putDouble("Frequency", frequency);
@@ -135,7 +137,20 @@ public class ItemWalkieTalkie extends AccessoryItem implements GeoItem {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "StateController", 0, state -> {
 
+            ItemStack stack = state.getData(DataTickets.ITEMSTACK);
+
+            if (stack == null) {
+                return PlayState.STOP;
+            }
+
+            if (isOn(stack)) {
+                return state.setAndContinue(ON_STATE_ANIM);
+            } else {
+                return state.setAndContinue(OFF_STATE_ANIM);
+            }
+        }));
     }
 
     @Override

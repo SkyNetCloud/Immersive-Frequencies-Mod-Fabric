@@ -1,4 +1,4 @@
-package com.armilp.ifreq.client.accessory.renderer;
+package com.armilp.ifreq.client.compat.accessories.renderer;
 
 import io.wispforest.accessories.api.client.AccessoryRenderer;
 import io.wispforest.accessories.api.slot.SlotReference;

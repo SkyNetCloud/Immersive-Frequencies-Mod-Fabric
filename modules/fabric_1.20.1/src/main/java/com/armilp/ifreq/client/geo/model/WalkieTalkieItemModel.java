@@ -10,7 +10,7 @@ import static com.armilp.ifreq.MainEZ.MODID;
 public class WalkieTalkieItemModel extends GeoModel<ItemWalkieTalkie> {
 
     private final Identifier model = Identifier.of(MODID, "geo/walkie_talkie.geo.json");
-    private final Identifier animations = Identifier.of(MODID, "animations/walkie_talkie.animation.json");
+    private final Identifier animations = Identifier.of(MODID, "animations/walkie_talkie.geo.animation.json");
     private final Identifier texture = Identifier.of(MODID, "textures/item/walkie_talkie_texture_model.png");
 
 

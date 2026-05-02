@@ -1,8 +1,8 @@
 package com.armilp.ifreq;
 
+import com.armilp.ifreq.client.compat.accessories.AccessoriesCompat;
 import com.armilp.ifreq.common.frequency.FrequencyManager;
 import com.armilp.ifreq.common.items.ItemWalkieTalkie;
-import de.maxhenkel.voicechat.api.ForgeVoicechatPlugin;
 import de.maxhenkel.voicechat.api.VoicechatConnection;
 import de.maxhenkel.voicechat.api.VoicechatPlugin;
 import de.maxhenkel.voicechat.api.VoicechatServerApi;
@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-@ForgeVoicechatPlugin
+
 public class Plugin implements VoicechatPlugin {
 
     public static final String PLUGIN_ID = "ifreq";
@@ -93,6 +93,11 @@ public class Plugin implements VoicechatPlugin {
         if (main.getItem() instanceof ItemWalkieTalkie) return main;
         ItemStack off = player.getOffHandStack();
         if (off.getItem() instanceof ItemWalkieTalkie) return off;
+
+        if (AccessoriesCompat.isLoaded()) {
+            return AccessoriesCompat.getEquippedWalkie(player);
+        }
+
         return null;
     }
 

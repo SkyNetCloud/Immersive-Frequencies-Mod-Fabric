@@ -2,8 +2,7 @@ package com.armilp.ifreq.common;
 
 import com.armilp.ifreq.Plugin;
 import com.armilp.ifreq.common.items.ItemWalkieTalkie;
-import com.armilp.ifreq.common.registry.ModItems;
-import io.wispforest.accessories.api.AccessoriesCapability;
+import com.armilp.ifreq.client.compat.accessories.AccessoriesCompat;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
@@ -91,16 +90,11 @@ public class WalkieHandler {
         if (main.getItem() instanceof ItemWalkieTalkie) return main;
         ItemStack off = player.getOffHandStack();
         if (off.getItem() instanceof ItemWalkieTalkie) return off;
-        var cap = AccessoriesCapability.get(player);
-        if (cap != null) {
-            var equipped = cap.getEquipped(ModItems.WALKIE_TALKIE.asItem());
-            for (var ref : equipped) {
-                if (ref.reference().slotName().equals("belt")) {
-                    return ref.stack();
-                }
-            }
-        }
 
+
+        if (AccessoriesCompat.isLoaded()) {
+            return AccessoriesCompat.getEquippedWalkie(player);
+        }
 
         return null;
     }

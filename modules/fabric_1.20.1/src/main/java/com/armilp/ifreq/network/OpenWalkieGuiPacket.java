@@ -15,6 +15,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 public record OpenWalkieGuiPacket() implements FabricPacket {
 
     public static final PacketType<OpenWalkieGuiPacket> TYPE = PacketType.create(
@@ -28,7 +30,6 @@ public record OpenWalkieGuiPacket() implements FabricPacket {
 
     @Override
     public void write(PacketByteBuf buf) {
-        // No data to write
     }
 
     @Override
@@ -36,8 +37,8 @@ public record OpenWalkieGuiPacket() implements FabricPacket {
         return TYPE;
     }
 
-    public static void receive(OpenWalkieGuiPacket packet, ServerPlayerEntity player, PacketSender responseSender) {
-        player.getServer().execute(() -> {
+    public static void receive(OpenWalkieGuiPacket ignoredpacket, ServerPlayerEntity player, PacketSender ignored) {
+        Objects.requireNonNull(player.getServer()).execute(() -> {
             player.openHandledScreen(new ExtendedScreenHandlerFactory() {
                 @Override
                 public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
