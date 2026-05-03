@@ -12,5 +12,7 @@
   "gui.ifreq.walkie_talkie.power_label": "Power",
   "gui.ifreq.walkie_talkie.on": "ON",
   "gui.ifreq.walkie_talkie.off": "OFF",
+  "gui.ifreq.walkie_talkie.volume": "Beep Sound Slider",
   "key.ifreq.open_walkie_gui": "Open Walkie GUI"
+
 }

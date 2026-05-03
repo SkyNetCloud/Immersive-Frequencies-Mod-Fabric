@@ -9,6 +9,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
@@ -63,17 +64,13 @@ public class ItemWalkieTalkie extends Item implements GeoItem {
             boolean currentlyOn = isOn(stack);
             boolean newState = !currentlyOn;
             setOn(stack, newState);
-            if (newState) {
-                world.playSound(null, player.getBlockPos(),
-                        ModSounds.RADIO_BEEP,
-                        net.minecraft.sound.SoundCategory.PLAYERS,
-                        1.0f, 1.0f);
-            } else {
-                world.playSound(null, player.getBlockPos(),
-                        ModSounds.RADIO_NOISE,
-                        net.minecraft.sound.SoundCategory.PLAYERS,
-                        1.0f, 1.0f);
-            }
+
+
+//            world.playSound(null, player.getBlockPos(),
+//                        newState ? ModSounds.RADIO_BEEP : ModSounds.RADIO_BEEP,
+//                        SoundCategory.PLAYERS, getVolume(stack), 0.1f);
+
+
             player.sendMessage(
                     Text.translatable("message.ifreq.walkie_talkie.frequency",
                             String.format("%.1f", getFrequency(stack))), true
@@ -115,6 +112,15 @@ public class ItemWalkieTalkie extends Item implements GeoItem {
     public static void setOn(ItemStack stack, boolean on) {
         NbtCompound nbt = getOrCreateNbt(stack);
         nbt.putBoolean("On", on);
+    }
+
+    public static float getVolume(ItemStack stack) {
+        if (!stack.hasNbt() || !stack.getNbt().contains("Volume")) return 1.0f;
+        return stack.getNbt().getFloat("Volume");
+    }
+
+    public static void setVolume(ItemStack stack, float volume) {
+        stack.getOrCreateNbt().putFloat("Volume", volume);
     }
 
     @Override

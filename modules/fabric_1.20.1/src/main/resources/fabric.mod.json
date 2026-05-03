@@ -1,34 +1,30 @@
 {
   "schemaVersion": 1,
-  "id": "ifreq",
+  "id": "${mod_id}",
   "version": "${version}",
-  "name": "Immersive Frequencies",
-  "description": "A mod that adds frequency-based communication systems",
-  "authors": [
-    "armilp",
-    "JPZamps",
-    "SkyNetCloud"
-  ],
-  "contact": {},
-  "license": "All Rights Reserved",
-  "icon": "assets/ifreq/icon.png",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
+  "authors": ["${mod_authors}"],
+  "license": "${mod_license}",
+  "icon": "assets/${mod_id}/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.armilp.ifreq.MainEZ"
+      "${mod_group_id}.${mod_id}.MainEZ"
     ],
     "client": [
-      "com.armilp.ifreq.client.ClientMainEZ"
+      "${mod_group_id}.${mod_id}.client.ClientMainEZ"
     ],
     "voicechat": [
-      "com.armilp.ifreq.Plugin"
+      "${mod_group_id}.${mod_id}.Plugin"
     ]
   },
   "depends": {
-    "fabricloader": ">=0.14.21",
+    "fabricloader": ">=${loader_version}",
     "fabric": "*",
-    "voicechat": ">=1.20.1-2.5.0",
-    "minecraft": "1.20.1"
+    "voicechat": ">=${voicechat_version}",
+    "minecraft": "${minecraft_version}",
+    "geckolib": ">=${geckolib_version}"
   },
   "suggests": {
     "accessories": "*"

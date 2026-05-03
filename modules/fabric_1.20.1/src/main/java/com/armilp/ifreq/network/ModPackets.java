@@ -18,5 +18,9 @@ public class ModPackets {
                     WalkiePowerPacket.TYPE,
                     WalkiePowerPacket::receive
             );
+            ServerPlayNetworking.registerGlobalReceiver(
+                    WalkieVolumePacket.TYPE,
+                    WalkieVolumePacket::receive
+            );
         }
 }

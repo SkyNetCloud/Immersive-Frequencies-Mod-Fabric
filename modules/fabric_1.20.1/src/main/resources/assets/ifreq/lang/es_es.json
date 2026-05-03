@@ -12,5 +12,6 @@
   "gui.ifreq.walkie_talkie.power_label": "Energía",
   "gui.ifreq.walkie_talkie.on": "ON",
   "gui.ifreq.walkie_talkie.off": "OFF",
+  "gui.ifreq.walkie_talkie.volume": "Ajuste de volumen del pitido",
   "key.ifreq.open_walkie_gui": "Abrir GUI del Walkie"
 }

@@ -5,10 +5,12 @@ import com.armilp.ifreq.common.items.ItemWalkieTalkie;
 import com.armilp.ifreq.common.menu.WalkieTalkieMenu;
 import com.armilp.ifreq.network.WalkieFrequencyPacket;
 import com.armilp.ifreq.network.WalkiePowerPacket;
+import com.armilp.ifreq.network.WalkieVolumePacket;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
@@ -57,10 +59,16 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
     private static final int OFF_ICON_X = OFF_X + (TOGGLE_W - ICON_SIZE) / 2;
     private static final int ON_ICON_X  = ON_X  + (TOGGLE_W - ICON_SIZE) / 2;
 
+    private static final int SLIDER_W = 130;
+    private static final int SLIDER_H = 16;
+    private static final int SLIDER_X = (GUI_W - SLIDER_W) / 2;
+    private static final int SLIDER_Y = 148;
+
     private static final int TEXT_COLOR = 0x404040;
 
     private double frequency;
     private boolean isOn;
+    private float volume;
 
     private TextFieldWidget frequencyInput;
     private ButtonWidget setButton;
@@ -75,6 +83,7 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
         ItemStack stack = menu.itemStack;
         this.frequency = ItemWalkieTalkie.getFrequency(stack);
         this.isOn      = ItemWalkieTalkie.isOn(stack);
+        this.volume      = ItemWalkieTalkie.getVolume(stack);
         this.frequency = clampFM(frequency);
     }
 
@@ -108,15 +117,35 @@ public class WalkieTalkieScreen extends HandledScreen<WalkieTalkieMenu> {
                 btn -> setPowerState(true)
         ).dimensions(x + ON_X, y + TOGGLE_Y, TOGGLE_W, TOGGLE_H).build();
 
+        SliderWidget volumeSlider = new SliderWidget(
+                x + SLIDER_X, y + SLIDER_Y,
+                SLIDER_W, SLIDER_H,
+                Text.empty(),
+                volume
+        ) {
+            @Override
+            protected void updateMessage() {
+                setMessage(Text.translatable("gui.ifreq.walkie_talkie.volume",
+                        String.format("%.0f%%", value * 100)));
+            }
+
+            @Override
+            protected void applyValue() {
+                volume = (float) value;
+                ItemWalkieTalkie.setVolume(handler.itemStack, volume);
+                ClientPlayNetworking.send(new WalkieVolumePacket(volume));
+            }
+        };
+
         this.addDrawableChild(frequencyInput);
         this.addDrawableChild(setButton);
         this.addDrawableChild(offButton);
         this.addDrawableChild(onButton);
+        //this.addDrawableChild(volumeSlider);
 
         setInitialFocus(frequencyInput);
         updatePowerButtons();
     }
-
     private void onFrequencyInputChanged(String raw) {
         String text  = raw.replace(',', '.');
         boolean valid = isValidFM(text);
