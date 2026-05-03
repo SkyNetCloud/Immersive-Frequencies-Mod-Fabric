@@ -24,7 +24,8 @@
     "fabric": "*",
     "voicechat": ">=${voicechat_version}",
     "minecraft": "${minecraft_version}",
-    "geckolib": ">=${geckolib_version}"
+    "geckolib": ">=${geckolib_version}",
+    "owo": ">=${owo_version}"
   },
   "suggests": {
     "accessories": "*"

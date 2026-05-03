@@ -67,6 +67,7 @@ processResources {
             "loader_version" : project.loader_version,
             "voicechat_version": project.voicechat_version,
             "geckolib_version": project.geckolib_version,
+            "owo_version": project.owo_version,
             "mod_id"         : project.mod_id,
             "mod_name"       : project.mod_name,
             "mod_license"    : project.mod_license,
@@ -92,7 +93,7 @@ jar {
     }
 }
 
-tasks.register('publishCurseForge', TaskPublishCurseForge) {
+tasks.register('curseforge', TaskPublishCurseForge) {
     apiToken = System.getenv("CURSEFORGE_TOKEN")
 
     def mainFile = upload('1524395', file("build/libs/${mod_id}-${mod_version}.jar"))
@@ -109,6 +110,7 @@ tasks.register('publishCurseForge', TaskPublishCurseForge) {
     mainFile.addRequirement("simple-voice-chat")
     mainFile.addRequirement("fabric-api")
     mainFile.addRequirement("geckolib")
+    mainFile.addRequirement("owo-lib")
     mainFile.addOptional("accessories")
 
 }
@@ -130,13 +132,14 @@ modrinth {
     dependencies {
         required.project "fabric-api"
         required.project 'simple-voice-chat'
+        required.project 'owo-lib'
         optional.project 'accessories'
-        required.project ''
+
     }
 }
 
 tasks.register('publicModdedSite') {
     dependsOn 'build'
-    dependsOn 'publishCurseForge'
+    dependsOn 'curseforge'
     dependsOn 'modrinth'
 }
