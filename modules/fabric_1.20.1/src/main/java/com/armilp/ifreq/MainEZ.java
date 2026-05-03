@@ -1,6 +1,7 @@
 package com.armilp.ifreq;
 
 import com.armilp.ifreq.common.WalkieHandler;
+import com.armilp.ifreq.common.config.IfreqConfig;
 import com.armilp.ifreq.common.events.PlayerEventHandler;
 import com.armilp.ifreq.common.registry.*;
 import com.armilp.ifreq.network.ModPackets;
@@ -16,6 +17,8 @@ public class MainEZ implements ModInitializer {
 
     @Override
     public void onInitialize() {
+
+        IfreqConfig.load();
         ModItems.register();
         ModSounds.register();
         ModCreativeTab.register();

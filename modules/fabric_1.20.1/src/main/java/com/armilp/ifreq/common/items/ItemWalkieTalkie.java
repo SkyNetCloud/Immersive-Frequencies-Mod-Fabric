@@ -1,6 +1,7 @@
 package com.armilp.ifreq.common.items;
 
 import com.armilp.ifreq.client.geo.renderer.WalkieGeoItemRenderer;
+import com.armilp.ifreq.common.config.IfreqConfig;
 import com.armilp.ifreq.common.registry.ModSounds;
 import net.minecraft.client.item.TooltipContext;
 import net.minecraft.client.render.item.BuiltinModelItemRenderer;
@@ -34,15 +35,15 @@ public class ItemWalkieTalkie extends Item implements GeoItem {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final Supplier<Object> renderProvider = GeoItem.makeRenderer(this);
 
-    private final double maxDistance;
+    private final String configKey;
 
-    public ItemWalkieTalkie(Settings settings, double maxDistance) {
+    public ItemWalkieTalkie(Settings settings, String configKey) {
         super(settings);
-        this.maxDistance = maxDistance;
+        this.configKey = configKey;
     }
 
     public double getMaxDistance() {
-        return maxDistance;
+        return IfreqConfig.getRange(configKey);
     }
 
     @Override
@@ -50,7 +51,7 @@ public class ItemWalkieTalkie extends Item implements GeoItem {
         tooltip.add(Text.translatable("item.ifreq.walkie_talkie.tooltip.frequency",
                 String.format("%.1f", getFrequency(stack))));
         tooltip.add(Text.translatable("item.ifreq.walkie_talkie.tooltip.range",
-                (int) maxDistance));
+                (int) getMaxDistance()));
     }
 
 
